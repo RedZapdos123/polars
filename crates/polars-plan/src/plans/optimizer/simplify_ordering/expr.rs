@@ -477,8 +477,7 @@ impl ExprOrderSimplifier<'_> {
                 let by_len = by.len();
 
                 if recursion.allows_deorder()
-                    && (is_length_preserving_ae(expr, self.expr_arena)
-                        || is_scalar_ae(expr, self.expr_arena))
+                    && is_length_preserving_ae(expr, self.expr_arena)
                     && (0..by_len).all(|i| {
                         let AExpr::SortBy { by, .. } = self.expr_arena.get(current_ae_node) else {
                             unreachable!()
@@ -486,7 +485,6 @@ impl ExprOrderSimplifier<'_> {
 
                         let node = by[i];
                         is_length_preserving_ae(node, self.expr_arena)
-                            || is_scalar_ae(node, self.expr_arena)
                     })
                 {
                     self.expr_arena
