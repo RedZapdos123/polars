@@ -3,7 +3,7 @@ use polars_core::prelude::PlHashMap;
 use polars_utils::arena::{Arena, Node};
 
 use crate::dsl::EvalVariant;
-use crate::plans::{AExpr, IRAggExpr, IRFunctionExpr, is_length_preserving_ae, is_scalar_ae};
+use crate::plans::{AExpr, IRAggExpr, IRFunctionExpr, is_length_preserving_ae};
 
 bitflags! {
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
