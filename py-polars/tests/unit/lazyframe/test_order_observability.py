@@ -705,6 +705,22 @@ def test_order_simplify_exprs() -> None:
     assert 'col("a").unique()' in plan
 
     plan = (
+        pl.LazyFrame({"a": 1, "b": 1})
+        .select(pl.col("a").sort_by("b").unique(maintain_order=False))
+        .explain()
+    )
+
+    assert 'col("a").unique()' in plan
+
+    plan = (
+        pl.LazyFrame({"a": 1})
+        .select(pl.col("a").sort_by(1).unique(maintain_order=False))
+        .explain()
+    )
+
+    assert 'col("a").unique()' in plan
+
+    plan = (
         pl.LazyFrame({"a": 1})
         .select(pl.col("a").sort().unique(maintain_order=True))
         .explain()
