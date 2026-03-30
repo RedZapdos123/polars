@@ -1,5 +1,3 @@
-use std::mem::ManuallyDrop;
-
 use polars_core::prelude::{InitHashMaps, PlHashMap};
 use polars_utils::UnitVec;
 use polars_utils::arena::{Arena, Node};
