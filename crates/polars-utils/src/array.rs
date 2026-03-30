@@ -1,3 +1,5 @@
+use std::mem::ManuallyDrop;
+
 pub fn try_map<T, U, const N: usize>(
     array: [T; N],
     f: impl FnMut(T) -> Option<U>,
@@ -9,4 +11,41 @@ pub fn try_map<T, U, const N: usize>(
     }
 
     Some(std::array::from_fn(|n| array[n].take().unwrap()))
+}
+
+/// Concatenate 2 arrays.
+pub fn array_concat<T, const NUM_LEFT: usize, const NUM_RIGHT: usize, const NUM_TOTAL: usize>(
+    left: [T; NUM_LEFT],
+    right: [T; NUM_RIGHT],
+) -> [T; NUM_TOTAL] {
+    const {
+        assert!(NUM_LEFT + NUM_RIGHT == NUM_TOTAL);
+    }
+
+    let mut left = left.map(ManuallyDrop::new);
+    let mut right = right.map(ManuallyDrop::new);
+
+    std::array::from_fn(|i| unsafe {
+        ManuallyDrop::take(if i < NUM_LEFT {
+            &mut left[i]
+        } else {
+            &mut right[i - NUM_LEFT]
+        })
+    })
+}
+
+/// Split an array to 2 arrays.
+pub fn array_split<T, const NUM_LEFT: usize, const NUM_RIGHT: usize, const NUM_TOTAL: usize>(
+    arr: [T; NUM_TOTAL],
+) -> ([T; NUM_LEFT], [T; NUM_RIGHT]) {
+    const {
+        assert!(NUM_LEFT + NUM_RIGHT == NUM_TOTAL);
+    }
+
+    let mut arr = arr.map(ManuallyDrop::new);
+
+    (
+        std::array::from_fn(|i| unsafe { ManuallyDrop::take(&mut arr[i]) }),
+        std::array::from_fn(|i| unsafe { ManuallyDrop::take(&mut arr[i + NUM_LEFT]) }),
+    )
 }

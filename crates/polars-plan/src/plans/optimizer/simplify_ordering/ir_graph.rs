@@ -1,6 +1,9 @@
+use std::mem::ManuallyDrop;
+
 use polars_core::prelude::{InitHashMaps, PlHashMap};
 use polars_utils::UnitVec;
 use polars_utils::arena::{Arena, Node};
+use polars_utils::array::{array_concat, array_split};
 use polars_utils::unique_id::UniqueId;
 use slotmap::SlotMap;
 
@@ -177,25 +180,11 @@ pub(crate) fn unpack_edges_mut<
         assert!(NUM_INPUTS + NUM_OUTPUTS == TOTAL_EDGES);
     }
 
-    let in_: [_; NUM_INPUTS] = node_edge_keys.in_edges.as_slice().try_into().ok()?;
-    let out: [_; NUM_OUTPUTS] = node_edge_keys.out_edges.as_slice().try_into().ok()?;
+    let in_: [EdgeKey; NUM_INPUTS] = node_edge_keys.in_edges.as_slice().try_into().ok()?;
+    let out: [EdgeKey; NUM_OUTPUTS] = node_edge_keys.out_edges.as_slice().try_into().ok()?;
 
-    let combined: [EdgeKey; TOTAL_EDGES] = std::array::from_fn(|i| {
-        if i < NUM_INPUTS {
-            in_[i]
-        } else {
-            out[i - NUM_INPUTS]
-        }
-    });
+    let combined: [EdgeKey; TOTAL_EDGES] = array_concat(in_, out);
+    let combined: [&mut Edge; TOTAL_EDGES] = edges_map.get_disjoint_mut(combined).unwrap();
 
-    let mut combined_mut_refs: [Option<&mut Edge>; TOTAL_EDGES] =
-        edges_map.get_disjoint_mut(combined).unwrap().map(Some);
-
-    let in_mut_refs: [&'a mut Edge; NUM_INPUTS] =
-        std::array::from_fn(|i| combined_mut_refs[i].take().unwrap());
-
-    let out_mut_refs: [&'a mut Edge; NUM_OUTPUTS] =
-        std::array::from_fn(|i| combined_mut_refs[i + NUM_INPUTS].take().unwrap());
-
-    Some((in_mut_refs, out_mut_refs))
+    Some(array_split(combined))
 }
