@@ -1,5 +1,8 @@
 use std::mem::ManuallyDrop;
 
+#[repr(C)]
+struct ArrayPair<T, const NUM_LEFT: usize, const NUM_RIGHT: usize>([T; NUM_LEFT], [T; NUM_RIGHT]);
+
 pub fn try_map<T, U, const N: usize>(
     array: [T; N],
     f: impl FnMut(T) -> Option<U>,
@@ -22,24 +25,19 @@ pub fn array_concat<T, const NUM_LEFT: usize, const NUM_RIGHT: usize, const NUM_
         assert!(NUM_LEFT + NUM_RIGHT == NUM_TOTAL);
     }
 
-    #[repr(C)]
-    struct CPair<A, B>(A, B);
-
-    unsafe { std::mem::transmute_copy(&ManuallyDrop::new(CPair(left, right))) }
+    unsafe { std::mem::transmute_copy(&ManuallyDrop::new(ArrayPair(left, right))) }
 }
 
 /// Split an array to 2 arrays.
 pub fn array_split<T, const NUM_LEFT: usize, const NUM_RIGHT: usize, const NUM_TOTAL: usize>(
-    arr: [T; NUM_TOTAL],
+    array: [T; NUM_TOTAL],
 ) -> ([T; NUM_LEFT], [T; NUM_RIGHT]) {
     const {
         assert!(NUM_LEFT + NUM_RIGHT == NUM_TOTAL);
     }
 
-    let mut arr = arr.map(ManuallyDrop::new);
+    let ArrayPair::<T, NUM_LEFT, NUM_RIGHT>(l, r) =
+        unsafe { std::mem::transmute_copy(&ManuallyDrop::new(array)) };
 
-    (
-        std::array::from_fn(|i| unsafe { ManuallyDrop::take(&mut arr[i]) }),
-        std::array::from_fn(|i| unsafe { ManuallyDrop::take(&mut arr[i + NUM_LEFT]) }),
-    )
+    (l, r)
 }
