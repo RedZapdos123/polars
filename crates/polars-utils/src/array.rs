@@ -22,16 +22,10 @@ pub fn array_concat<T, const NUM_LEFT: usize, const NUM_RIGHT: usize, const NUM_
         assert!(NUM_LEFT + NUM_RIGHT == NUM_TOTAL);
     }
 
-    let mut left = left.map(ManuallyDrop::new);
-    let mut right = right.map(ManuallyDrop::new);
+    #[repr(C)]
+    struct CPair<A, B>(A, B);
 
-    std::array::from_fn(|i| unsafe {
-        ManuallyDrop::take(if i < NUM_LEFT {
-            &mut left[i]
-        } else {
-            &mut right[i - NUM_LEFT]
-        })
-    })
+    unsafe { std::mem::transmute_copy(&ManuallyDrop::new(CPair(left, right))) }
 }
 
 /// Split an array to 2 arrays.
