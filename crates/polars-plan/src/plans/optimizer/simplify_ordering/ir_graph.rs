@@ -14,23 +14,31 @@ pub(crate) struct IRNodeEdgeKeys<EdgeKey> {
     pub(crate) out_nodes: UnitVec<Node>,
 }
 
-pub(crate) struct IRCacheArenaNodes {
+/// Cache nodes that share a cache ID.
+struct CacheNodes {
     nodes: Vec<Node>,
     hits: usize,
 }
 
-impl IRCacheArenaNodes {
-    pub(crate) fn update_cache_nodes(&self, ir_arena: &mut Arena<IR>) {
-        let IR::Cache { input, .. } = ir_arena.get(self.nodes[0]) else {
-            unreachable!()
-        };
-        let updated_input = *input;
+#[derive(Default)]
+pub(crate) struct CacheNodeUpdater {
+    inner: PlHashMap<UniqueId, CacheNodes>,
+}
 
-        for node in self.nodes.iter().skip(1) {
-            let IR::Cache { input, .. } = ir_arena.get_mut(*node) else {
+impl CacheNodeUpdater {
+    pub(crate) fn update_cache_nodes(self, ir_arena: &mut Arena<IR>) {
+        for (_, CacheNodes { nodes, hits: _ }) in self.inner {
+            let IR::Cache { input, .. } = ir_arena.get(nodes[0]) else {
                 unreachable!()
             };
-            *input = updated_input;
+            let updated_input = *input;
+
+            for node in nodes.into_iter().skip(1) {
+                let IR::Cache { input, .. } = ir_arena.get_mut(node) else {
+                    unreachable!()
+                };
+                *input = updated_input;
+            }
         }
     }
 }
@@ -45,13 +53,13 @@ pub(crate) fn build_ir_traversal_graph<EdgeKey, Edge>(
     Vec<Node>,                                     // Nodes in sink->source traversal order
     PlHashMap<IRNodeKey, IRNodeEdgeKeys<EdgeKey>>, // Edge keys for each node
     SlotMap<EdgeKey, Edge>,                        // Edges slotmap
-    PlHashMap<UniqueId, IRCacheArenaNodes>,        // All arena nodes that use this cache ID.
+    CacheNodeUpdater,                              // All arena nodes that use this cache ID.
 )
 where
     EdgeKey: slotmap::Key,
     Edge: Default,
 {
-    let mut cache_track: PlHashMap<UniqueId, IRCacheArenaNodes> = PlHashMap::new();
+    let mut cache_track: PlHashMap<UniqueId, CacheNodes> = PlHashMap::new();
     let mut num_nodes: usize = 0;
 
     let mut ir_nodes_stack = Vec::with_capacity(roots.len() + 8);
@@ -71,7 +79,7 @@ where
                     continue;
                 },
                 Entry::Vacant(v) => {
-                    v.insert(IRCacheArenaNodes {
+                    v.insert(CacheNodes {
                         nodes: vec![ir_node],
                         hits: 1,
                     });
@@ -149,7 +157,7 @@ where
         ir_nodes_stack,
         ir_node_to_edges_map,
         all_edges_map,
-        cache_track,
+        CacheNodeUpdater { inner: cache_track },
     )
 }
 
