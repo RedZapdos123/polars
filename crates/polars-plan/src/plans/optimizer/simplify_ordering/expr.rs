@@ -148,7 +148,7 @@ impl ExprOrderSimplifier<'_> {
         self.internally_observed |= observable_orders;
     }
 
-    // #[recursive::recursive]
+    #[recursive::recursive]
     fn rec(&mut self, current_ae_node: Node, recursion: RecursionState) -> ObservableOrders {
         use {ObservableOrders as O, RecursionState as RS};
 
